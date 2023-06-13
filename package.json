@@ -1,0 +1,25 @@
+{
+  "name": "json-editor",
+  "version": "1.0.0",
+  "description": "Editor for Setting Json file",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron . --plugins=\"./plugins\"",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "author": "zukio",
+  "license": "proprietary",
+  "dependencies": {},
+  "build": {
+    "appId": "io.github.zukio.json-editor",
+    "mac": {
+      "category": "public.app-category.developer-tools"
+    }
+  },
+  "devDependencies": {
+    "electron": "^25.1.0",
+    "electron-builder": "^23.6.0"
+  }
+}

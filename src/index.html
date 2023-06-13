@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <title>Edit Settings</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+    crossorigin="anonymous"
+  />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0"
+  />
+
+  <body class="p-5">
+    <div class="container">
+      <div class="text-end mb-3">
+        <a href="#" id="reload" class="d-none" onclick="window.location.reload(true);">読み直す🔄</a>
+      </div>
+      <pre id="debug"></pre>
+      <form id="editForm" name="editForm" class="position-relative needs-validation">
+        <button id="save" class="btn btn-secondary w-100" type="submit" disabled>
+          Save
+          <span class="material-symbols-outlined align-middle"> download </span>
+        </button>
+        <dl id="container" class="pt-3 m-0"></dl>
+      </form>
+      <div class="w-100 d-flex justify-content-center">
+        <button id="add" class="btn btn-outline-primary rounded-circle d-none" type="button">+</button>
+      </div>
+    </div>
+    <script src="./modifiedParts.js"></script>
+    <script src="./renderHtml.js"></script>
+    <script>
+      // ============================================
+      // Main
+      // --------------------------------------------
+      let data = [];
+      let fieldConfig = null;
+      let changeStyle = null;
+
+      const form = document.getElementById("editForm");
+      const parent = document.getElementById("container");
+      // const openBtn = document.getElementById("open");
+      const reloadBtn = document.getElementById("reload");
+      const saveBtn = document.getElementById("save");
+      const addBtn = document.getElementById("add");
+
+      // アプリ起動時
+      window.api.on("mounted", (apidata) => {
+        // data.jsonの内容が出力されます。
+        data = apidata.data;
+        fieldConfig = apidata.sample ?? {};
+        changeStyle = apidata.changeStyle ?? {};
+
+        // [イベント] HTMLおよびイベントリスナーを配置
+        reload(data);
+        // UIを更新
+        enableUI();
+      });
+
+      // [イベント] 送信ボタンを押したとき編集後のJSONを取得
+      form.addEventListener("submit", async (e) => {
+        event.preventDefault();
+        let valid = true;
+        Array.from(document.forms).forEach((unit) => {
+          // バリデーションの詳細情報を取得したい場合はcheckValidityの代わりにreportValidityを使用
+          if (unit.reportValidity()) {
+            console.log("Form is valid!");
+          } else {
+            console.log("Form is invalid!");
+            event.preventDefault(); // フォームのデフォルトの送信動作を防止
+            event.stopPropagation();
+            valid = false;
+          }
+        });
+        if (valid) {
+          // データをリクエストする
+          window.api.send("request-save", data);
+        }
+      });
+
+      // [イベント] 追加ボタンを押したとき新しいUnitを追加
+      addBtn.addEventListener("click", function (e) {
+        event.preventDefault();
+        // サンプルデータが定義されていればそれを使う
+        const unit = defineSample ? init(fieldConfig) : data[0];
+        data.push(unit);
+        reload(data);
+      });
+
+      // ============================================
+      // 以下は編集不要
+      // --------------------------------------------
+      // カスタマイズ用サンプルが宣言されているかどうか
+      const defineSample = () =>
+        typeof fieldConfig !== "undefined" && fieldConfig !== null && Object.keys(fieldConfig).length > 0;
+
+      // --------------------------------------------
+      // ファイルからデータを読み取ったら、保存&追加ボタンを有効化
+      function enableUI() {
+        saveBtn.disabled = false;
+        saveBtn.classList.replace("btn-secondary", "btn-primary");
+        //openBtn.classList.replace("btn-primary", "btn-outline-primary");
+        reloadBtn.classList.remove("d-none");
+        addBtn.classList.remove("d-none");
+      }
+
+      // --------------------------------------------
+      // 追加ボタンを押したら新しいUnitを追加
+      function init(sample) {
+        const obj = {};
+        // 渡されたサンプルのデータ構造を再現
+        const keys = Object.keys(sample);
+        const values = Object.values(sample);
+        // 初期値が定義されたサンプルデータかどうかをチェック
+        const hasInitial = values.some((value) => typeof value === "object" && hasOwnProperty.call(value, "initial"));
+        for (let i = 0; i < keys.length; i++) {
+          const key = keys[i];
+          const value = sample[key];
+          // 初期値が定義されたサンプルデータなら
+          if (hasInitial) {
+            // 必須項目のみ
+            if (!hasOwnProperty.call(value, "required") || value.required) {
+              // 初期値をセット
+              obj[key] = value.initial;
+            }
+          } else {
+            // 渡されたサンプルデータをそのままセット
+            obj[key] = value;
+          }
+        }
+        return obj;
+      }
+
+      // --------------------------------------------
+      // 値が変更されたら Form の入力値(forms[i][key])で JSON(data[i][key]) を置き換え
+      function onChange(element) {
+        if (element.name.split("-").length == 2) {
+          // element.name から key と index を取得
+          const original = revert(element.value, element.name, element.type);
+          // JSON(data[i][key]) を Form(forms[i][key]) で上書き
+          if (data[original.index][original.key] != original.value) {
+            data[original.index][original.key] = original.value;
+          }
+          // UI側の処理（表示・非表示の切り替えなど）
+          if (typeof onChangeValue === "function") {
+            onChangeValue(original.index, original.key, original.value);
+          }
+        }
+      }
+
+      // FormData(forms[i][key]) を JSON(data[i][key]) に変換
+      function revert(value, id, type = "text") {
+        const splits = id.split("-");
+        if (splits.length < 2) return null;
+
+        // element.name から key と index を取得
+        const index = splits.pop();
+        const parentKey = splits.pop();
+
+        // valueを適切な型に変換
+        switch (type) {
+          case "number":
+            value = Number(value);
+            break;
+          case "radio":
+            if (typeof value === "string") {
+              value = value === "true" ? true : false;
+            }
+            break;
+          case "checkbox":
+            if (typeof value === "string") {
+              value = value === "on" ? true : false;
+            }
+            break;
+          case "select-multiple":
+            value = Array.from(value);
+            break;
+          default:
+            value = value;
+            break;
+        }
+        // 深い階層に対応
+        while (splits.length > 0) {
+          const nestedKey = splits.pop();
+          value = { [nestedKey]: value };
+        }
+
+        return { index: index, key: parentKey, value: value };
+      }
+
+      // --------------------------------------------
+      // [更新] HTMLおよびイベントリスナーを更新
+      function reload(coverage, from = 0) {
+        parent.innerHTML = "";
+        // JsonをHTML(dl)で表示する
+        form.appendChild(setElem(coverage, from));
+        // イベントリスナーを更新
+        setChangeEvent();
+        setRemoveEvent();
+      }
+
+      // [更新] 値が変更されたときにJSONを更新
+      function setChangeEvent() {
+        let inputs = form.getElementsByTagName("input") ? Array.from(form.getElementsByTagName("input")) : [];
+        let dropdowns = form.getElementsByTagName("select") ? Array.from(form.getElementsByTagName("select")) : [];
+        [...inputs, ...dropdowns].forEach((element) => {
+          onChange(element); // 読み込み時
+          element.addEventListener("change", function (e) {
+            onChange(element); // 変更時
+          });
+        });
+      }
+
+      // [更新] 削除ボタンが押されたときにJSONを更新
+      function setRemoveEvent() {
+        let removeButtons = document.getElementsByClassName("del")
+          ? Array.from(document.getElementsByClassName("del"))
+          : [];
+        removeButtons.forEach((element) => {
+          element.addEventListener("click", function (e) {
+            const index = element.id.split("-").pop();
+            // 削除
+            data.splice(index, 1);
+            // 再描画
+            reload(data);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
