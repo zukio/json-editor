@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <title>Edit Settings</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+    crossorigin="anonymous"
+  />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0"
+  />
+
+  <body class="p-5">
+    <div class="container">
+      <button id="open" type="button" class="btn btn-primary btn-sm">
+        <span class="material-symbols-outlined align-middle"> folder_open </span>
+        Open File
+      </button>
+      <div class="text-end mb-3"><a href="#" id="reload" class="d-none">読み直す🔄</a></div>
+
+      <form id="editForm" name="editForm" class="position-relative needs-validation">
+        <button id="save" class="btn btn-secondary w-100" type="submit" disabled>
+          Save
+          <span class="material-symbols-outlined align-middle"> download </span>
+        </button>
+        <dl id="container" class="pt-3 m-0"></dl>
+      </form>
+      <div class="w-100 d-flex justify-content-center">
+        <button id="add" class="btn btn-outline-primary rounded-circle d-none" type="button">+</button>
+      </div>
+    </div>
+
+    <script type="module">
+      // ============================================
+      // カスタマイズパート
+      // --------------------------------------------
+      // 💬カスタマイズ方法がわからない場合は空 {} にしてください
+      // [プロパティ名]:{ initial:デフォルト値, selection:選択肢(略可), required:必須(略可) }
+      const fieldConfig = {
+        "Order": { initial: -1, required: true },
+        "Url": { initial: "", required: true },
+        "allowedUri": { initial: "", required: true },
+        "AllowsTransparency": { initial: true },
+        "ShowInTaskbar": { initial: false },
+        "WindowStyle": {
+          initial: "None",
+          selection: ["None", "SingleBorderWindow", "ThreeDBorderWindow", "ToolWindow"],
+        },
+        "ResizeMode": {
+          initial: "NoResize",
+          selection: ["NoResize", "CanMinimize", "CanResize", "CanResizeWithGrip"],
+        },
+        "WindowState": {
+          initial: "Maximized",
+          selection: ["Maximized", "Normal", "Minimized"],
+          required: true,
+        },
+        "NormalizePosition": {
+          initial: {
+            "X": 0,
+            "Y": 0,
+            "Width": 0,
+            "Height": 0,
+          },
+          required: true,
+        },
+        "auth": {
+          initial: {
+            "Name": "",
+            "Pass": "",
+          },
+        },
+      };
+
+      // ============================================
+      // 以下は編集不要
+      // --------------------------------------------
+      // カスタマイズ用サンプルが宣言されているかどうか
+      const defineSample = () =>
+        typeof fieldConfig !== "undefined" && fieldConfig !== null && Object.keys(fieldConfig).length > 0;
+
+      // Json keyをlabelに、valueをinputに置き換える
+      function translate(id, key, value = null) {
+        // fieldConfig が宣言されていれば
+        if (defineSample) {
+          // fieldConfig に倣って翻訳
+          return translateWithSample(id, key, value);
+        } else {
+          // key だけ渡された（value がない）場合は key を翻訳したラベルを返す
+          const needLabel = (value ?? null) == null;
+          if (needLabel) return key;
+          // value がある場合は 入力フォームを返す
+          return createInput(id, value);
+        }
+      }
+
+      // Json(Key) を日本語に翻訳
+      function translateWithSample(id, key, value = null) {
+        // key だけ渡された（value がない）場合は key を翻訳したラベルを返す
+        const needLabel = (value ?? null) == null;
+        // fieldConfig と key が一致するものがあるか
+        const role = fieldConfig[key];
+        // ラベル
+        if (needLabel) {
+          if (role) return role["label"];
+          return key;
+        }
+        // value がある場合は HTML要素（input）を返す
+        if (!role) return createInput(id, value);
+
+        if (Object.hasOwnProperty.call(role, "selection")) {
+          // 選択肢がある場合はドロップダウンリストを作成
+          return createDoropdown(id, value, role.selection);
+        }
+
+        switch (typeof value) {
+          case "boolean":
+            return createRadio(id, value);
+          case "number":
+            return createNumberInput(id, value, role);
+          case "string":
+            // 数値に変換可能なら数値入力
+            if (isNumber(role["initial"])) {
+              return createNumberInput(id, value, role);
+            }
+            return createTextInput(id, value, role);
+          case "object":
+          default:
+            return createInput(id, value);
+        }
+      }
+
+      // 値が変更されたら
+      function onChangeValue(i, key, value) {
+        if (defineSample) {
+          const defineChangeStyle =
+            typeof changeStyle !== "undefined" && changeStyle !== null && Object.keys(changeStyle).length > 0;
+          if (defineChangeStyle) {
+            // changeStyleオブジェクトをイテレートする
+            for (let combo in changeStyle) {
+              //if (!changeStyle.hasOwnProperty(key)) continue;
+              if (combo !== key) continue;
+
+              const rule = changeStyle[key];
+
+              rule.targets.forEach((target) => {
+                // keyに対応するHTML要素を取得
+                const inputElement = document.getElementById(`${target}-${i}`);
+                const inputElementValue = document.getElementById(`${target}-${i}-value`);
+                // 条件が一致した場合、指定した項目を表示/非表示に切り替える
+                const bool = rule.condition === "==" ? value === rule.if : value !== rule.if;
+                if (bool) {
+                  inputElement.classList.add(rule.toggleclass);
+                  inputElementValue.classList.add(rule.toggleclass);
+                } else {
+                  inputElement.classList.remove(rule.toggleclass);
+                  inputElementValue.classList.remove(rule.toggleclass);
+                }
+              });
+            }
+          }
+        }
+      }
+      // --------------------------------------------
+      // Helper
+      function isNumber(input) {
+        return input !== "" && !isNaN(Number(input));
+      }
+
+      function getType(input) {
+        if (typeof input !== "string" && typeof input !== "number") return typeof input;
+        if (typeof input == "string" && !isNumber(input)) return "string";
+        const numberString = typeof input === "number" ? input.toString() : input;
+        if (!numberString.includes(".")) {
+          return "int";
+        } else {
+          return "float";
+        }
+      }
+
+      // --------------------------------------------
+      // Json(Value) をHTML(Form)に変換
+      function createInput(id, value) {
+        const input = document.createElement("input");
+        input.setAttribute("name", id);
+        return input;
+      }
+
+      function createTextInput(id, value, role) {
+        const inputText = createInput(id, value);
+        inputText.setAttribute("value", value);
+        inputText.setAttribute("type", "text");
+        inputText.className = "w-100";
+        if (role["pattern"]) inputText.setAttribute("pattern", role["pattern"]);
+        const length = role["map"];
+        if (length) {
+          if (length.min) inputText.setAttribute("minlength", length.min);
+          if (length.max) inputText.setAttribute("maxlength", length.max);
+        }
+        return inputText;
+      }
+
+      function createNumberInput(id, value, role) {
+        const inputNumber = createInput(id, value);
+        inputNumber.setAttribute("type", "number");
+        inputNumber.className = "d-inline";
+
+        // 入れ子の場合は、子の値を参照する
+        let initial = role["initial"];
+        if (typeof role["initial"] === "object") {
+          const splits = id.split("-");
+          if (splits.length < 2) return null;
+          initial = role["initial"][splits[splits.length - 2]];
+        }
+        initial = initial === 0 ? value : initial;
+        const type = getType(initial);
+
+        if (type !== "int" && type !== "float") {
+          return createTextInput(id, value, role);
+        }
+        if (type == "float") {
+          inputNumber.setAttribute("step", 0.01); // float
+        } else {
+          inputNumber.setAttribute("step", 1); // int
+        }
+        const map = role["map"];
+        if (map) {
+          if (map.min != undefined) inputNumber.setAttribute("min", map.min);
+          if (map.max != undefined) inputNumber.setAttribute("max", map.max);
+        }
+        inputNumber.setAttribute("value", Number(value));
+        return inputNumber;
+      }
+
+      function createCheck(id, value) {
+        const input = document.createElement("input");
+        input.setAttribute("type", "checkbox");
+        input.setAttribute("name", id);
+        if (value) input.setAttribute("checked", "checked");
+        return input;
+      }
+      function createRadio(id, value) {
+        const div = document.createElement("div");
+        div.className = "btn-group";
+        div.setAttribute("role", "group");
+        div.setAttribute("aria-label", "Basic radio toggle button group");
+        div.innerHTML = `
+        <input type="radio" class="btn-check" name="${id}" id="${id}-on" autocomplete="off" value="${value}" ${
+          value ? "checked" : ""
+        }>
+        <label class="btn btn-outline-primary" for="${id}-on">する</label>
+        <input type="radio" class="btn-check" name="${id}" id="${id}-off" autocomplete="off" value="${value}" ${
+          !value ? "checked" : ""
+        }>
+        <label class="btn btn-outline-primary" for="${id}-off">しない</label>`;
+        return div;
+      }
+      function createDoropdown(id, value, array) {
+        const select = document.createElement("select");
+        select.setAttribute("name", id);
+        select.innerHTML = `<option selected>Open this select menu</option>`;
+        array.forEach((element) => {
+          const option = document.createElement("option");
+          option.setAttribute("value", element);
+          option.textContent = element;
+          if (element === value) option.setAttribute("selected", "selected");
+          select.appendChild(option);
+        });
+        return select;
+      }
+
+      // --------------------------------------------
+      // Json(Array) をHTML(dl)で表示する
+      function setElem(coverage, from = 0) {
+        // 非同期の処理のため、forEachの代わりにfor...ofループを使用
+        for (let i = 0; i < coverage.length; i++) {
+          const index = i + from;
+          const object = coverage[i];
+
+          // 区切り線
+          const parent_dt = document.createElement("dt");
+          parent_dt.className = "border-top pt-1 float-start";
+          parent_dt.innerHTML = `<span id="del-${index}" class="del material-symbols-outlined">delete</span>`;
+          parent.appendChild(parent_dt);
+          // Unit
+          const parent_dd = document.createElement("dd");
+          parent_dd.className = "border-top p-1 m-0";
+
+          const form = document.createElement("form");
+          form.name = `form-${index}`;
+          form.className = "needs-validation";
+
+          // ネストされたJSONオブジェクトを処理
+          form.appendChild(createHtmlFromNestedObject(object, index));
+
+          parent_dd.appendChild(form);
+          parent.appendChild(parent_dd);
+        }
+        return parent;
+      }
+
+      // ネストされたJSONオブジェクトを処理
+      function createHtmlFromNestedObject(object, index, path = []) {
+        const dl = document.createElement("dl");
+        dl.className = "row m-0 p-0";
+
+        for (const key in object) {
+          if (Object.hasOwnProperty.call(object, key)) {
+            // 生成されるHTML要素のidは parentKey-nestedKey-indexになります
+            const newPath = [...path, key];
+            const pathString = newPath.join("-");
+            const parentKey = path.length ? path[0] : key;
+            // 見出し
+            const dt = document.createElement("dt");
+            dt.id = `${pathString}-${index}`;
+            dt.className = "col-3 pt-1 bg-light";
+            dt.style = "border-top: 1px solid #fff;";
+            dt.textContent = translate(dt.id, key) ?? key; // 翻訳
+            dl.appendChild(dt);
+            // 内容
+            const dd = document.createElement("dd");
+            dd.id = `${pathString}-${index}-value`;
+            dd.className = "col-9 pt-1";
+            // // ネストされたJSONオブジェクト
+            if (typeof object[key] === "object") {
+              // 再帰的に処理
+              dd.appendChild(createHtmlFromNestedObject(object[key], index, newPath));
+            } else {
+              const element = translate(dt.id, parentKey, object[key]); // 翻訳
+              // HTML要素を返す
+              if (element.outerHTML) {
+                dd.innerHTML = element.outerHTML;
+              } else {
+                const textNode = document.createTextNode(element);
+                dd.appendChild(textNode);
+              }
+            }
+            dl.appendChild(dd);
+          }
+        }
+        return dl;
+      }
+
+      // 新しいUnitを追加
+      function init(sample) {
+        const obj = {};
+        // 渡されたサンプルのデータ構造を再現
+        const keys = Object.keys(sample);
+        const values = Object.values(sample);
+        // 初期値が定義されたサンプルデータかどうかをチェック
+        const hasInitial = values.some((value) => typeof value === "object" && hasOwnProperty.call(value, "initial"));
+        for (let i = 0; i < keys.length; i++) {
+          const key = keys[i];
+          const value = sample[key];
+          // 初期値が定義されたサンプルデータなら
+          if (hasInitial) {
+            // 必須項目のみ
+            if (!hasOwnProperty.call(value, "required") || value.required) {
+              // 初期値をセット
+              obj[key] = value.initial;
+            }
+          } else {
+            // 渡されたサンプルデータをそのままセット
+            obj[key] = value;
+          }
+        }
+        return obj;
+      }
+
+      // --------------------------------------------
+      // [未使用] 送信ボタンが押されたら Form の入力値(forms)で JSON(data)を置き換え
+      function updateData(element) {
+        let index = 0;
+        // HTMLCollectionには forEach が存在しないので、Array.from() で配列に変換
+        Array.from(document.forms).forEach((unit) => {
+          if (unit.name === "editForm") return; // フォームの送信ボタンを除外
+          let formData = new FormData(unit); // フォームデータを取得
+          let object = {};
+          formData.forEach((value, key) => {
+            const revert = revert(value, key);
+            object[revert.key] = revert.value;
+          });
+          data[index] = object;
+          index++;
+        });
+      }
+
+      // 値が変更されたら Form の入力値(forms[i][key])で JSON(data[i][key]) を置き換え
+      function onChange(element) {
+        if (element.name.split("-").length == 2) {
+          // element.name から key と index を取得
+          const original = revert(element.value, element.name, element.type);
+          // JSON(data[i][key]) を Form(forms[i][key]) で上書き
+          if (data[original.index][original.key] != original.value) {
+            data[original.index][original.key] = original.value;
+          }
+          // UI側の処理（表示・非表示の切り替えなど）
+          if (typeof onChangeValue === "function") {
+            onChangeValue(original.index, original.key, original.value);
+          }
+        }
+      }
+
+      // FormData(forms[i][key]) を JSON(data[i][key]) に変換
+      function revert(value, id, type = "text") {
+        const splits = id.split("-");
+        if (splits.length < 2) return null;
+
+        // element.name から key と index を取得
+        const index = splits.pop();
+        const parentKey = splits.pop();
+
+        // valueを適切な型に変換
+        switch (type) {
+          case "number":
+            value = Number(value);
+            break;
+          case "radio":
+            if (typeof value === "string") {
+              value = value === "true" ? true : false;
+            }
+            break;
+          case "checkbox":
+            if (typeof value === "string") {
+              value = value === "on" ? true : false;
+            }
+            break;
+          case "select-multiple":
+            value = Array.from(value);
+            break;
+          default:
+            value = value;
+            break;
+        }
+
+        // 深い階層に対応
+        while (splits.length > 0) {
+          const nestedKey = splits.pop();
+          value = { [nestedKey]: value };
+        }
+
+        return { index: index, key: parentKey, value: value };
+      }
+
+      // --------------------------------------------
+      // [更新] HTMLおよびイベントリスナーを更新
+      function reload(coverage, from = 0) {
+        parent.innerHTML = "";
+        // JsonをHTML(dl)で表示する
+        form.appendChild(setElem(coverage, from));
+        // イベントリスナーを更新
+        setChangeEvent();
+        setRemoveEvent();
+      }
+
+      // [更新] 値が変更されたときにJSONを更新
+      function setChangeEvent() {
+        let inputs = form.getElementsByTagName("input") ? Array.from(form.getElementsByTagName("input")) : [];
+        let dropdowns = form.getElementsByTagName("select") ? Array.from(form.getElementsByTagName("select")) : [];
+        [...inputs, ...dropdowns].forEach((element) => {
+          onChange(element); // 読み込み時
+          element.addEventListener("change", function (e) {
+            onChange(element); // 変更時
+          });
+        });
+      }
+
+      // [更新] 削除ボタンが押されたときにJSONを更新
+      function setRemoveEvent() {
+        let removeButtons = document.getElementsByClassName("del")
+          ? Array.from(document.getElementsByClassName("del"))
+          : [];
+        removeButtons.forEach((element) => {
+          element.addEventListener("click", function (e) {
+            const index = element.id.split("-").pop();
+            console.log("削除", index);
+            // 削除
+            data.splice(Number(index), 1);
+            // 再描画
+            reload(data);
+          });
+        });
+      }
+      // --------------------------------------------
+      // File 操作
+      // --------------------------------------------
+      // ファイルに保存(FILE API)
+      function saveFile(json) {
+        var blob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
+        var link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = jsonFile.split("/").pop();
+        link.click();
+      }
+      // ファイルに保存(File System Access API: File API と異なり上書き保存が可能）
+      async function saveFileSystem(json) {
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(json, null, 2));
+        await writable.close();
+      }
+      // ファイルを開く
+      async function OpenFile() {
+        const file = await fileHandle.getFile();
+        const contents = await file.text();
+        data = JSON.parse(contents);
+        // [更新] HTMLおよびイベントリスナーを配置
+        reload(data);
+        // UIを更新
+        enableUI();
+      }
+      // ファイルからデータを読み取ったら、保存&追加ボタンを有効化
+      function enableUI() {
+        saveBtn.disabled = false;
+        saveBtn.classList.replace("btn-secondary", "btn-primary");
+        openBtn.classList.replace("btn-primary", "btn-outline-primary");
+        reloadBtn.classList.remove("d-none");
+        addBtn.classList.remove("d-none");
+      }
+      // ============================================
+      // Main
+      // --------------------------------------------
+      let fileHandle;
+      let data = [];
+      const form = document.getElementById("editForm");
+      const parent = document.getElementById("container");
+      const openBtn = document.getElementById("open");
+      const reloadBtn = document.getElementById("reload");
+      const saveBtn = document.getElementById("save");
+      const addBtn = document.getElementById("add");
+
+      // [イベント] ファイルを開いたら
+      openBtn.addEventListener("click", async (e) => {
+        [fileHandle] = await window.showOpenFilePicker();
+        OpenFile();
+      });
+      reloadBtn.addEventListener("click", async (e) => {
+        OpenFile();
+      });
+      // [イベント] 送信ボタンを押したとき編集後のJSONを取得
+      form.addEventListener("submit", async (e) => {
+        event.preventDefault();
+        let valid = true;
+        Array.from(document.forms).forEach((unit) => {
+          // バリデーションの詳細情報を取得したい場合はcheckValidityの代わりにreportValidityを使用
+          if (unit.reportValidity()) {
+            console.log("Form is valid!");
+          } else {
+            console.log("Form is invalid!");
+            event.preventDefault(); // フォームのデフォルトの送信動作を防止
+            event.stopPropagation();
+            valid = false;
+          }
+        });
+        if (valid) {
+          saveFile(data);
+          //saveFileSystem(data);
+        }
+      });
+
+      // [イベント] 追加ボタンを押したとき新しいUnitを追加
+      addBtn.addEventListener("click", function (e) {
+        event.preventDefault();
+        // サンプルデータが定義されていればそれを使う
+        const unit = defineSample ? init(fieldConfig) : data[0];
+        data.push(unit);
+        reload(data);
+      });
+    </script>
+  </body>
+</html>
