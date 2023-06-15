@@ -169,11 +169,11 @@ function createRadio(id, value) {
   div.setAttribute("role", "group");
   div.setAttribute("aria-label", "Basic radio toggle button group");
   div.innerHTML = `
-  <input type="radio" class="btn-check" name="${id}" id="${id}-on" autocomplete="off" value="${value}" ${
+  <input type="radio" class="btn-check" name="${id}" id="${id}-on" autocomplete="off" value="${true}" ${
     value ? "checked" : ""
   }>
   <label class="btn btn-outline-primary" for="${id}-on">する</label>
-  <input type="radio" class="btn-check" name="${id}" id="${id}-off" autocomplete="off" value="${!value}" ${
+  <input type="radio" class="btn-check" name="${id}" id="${id}-off" autocomplete="off" value="${false}" ${
     !value ? "checked" : ""
   }>
   <label class="btn btn-outline-primary" for="${id}-off">しない</label>`;

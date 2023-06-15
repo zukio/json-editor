@@ -14,7 +14,7 @@ const fieldConfig = {
     required: true, // 必須かどうか(略可: 初期値=true)
   },
   "Float": {
-    initial: 0.0,
+    initial: "0.0", // floatの場合0.0を指定すると0になるので文字列で指定
     label: "小数",
     map: { min: 0, max: 1 }, // 数値の範囲(略可: 初期値=undefined)
   },

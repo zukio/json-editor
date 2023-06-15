@@ -249,11 +249,11 @@
         div.setAttribute("role", "group");
         div.setAttribute("aria-label", "Basic radio toggle button group");
         div.innerHTML = `
-        <input type="radio" class="btn-check" name="${id}" id="${id}-on" autocomplete="off" value="${value}" ${
+        <input type="radio" class="btn-check" name="${id}" id="${id}-on" autocomplete="off" value="${true}" ${
           value ? "checked" : ""
         }>
         <label class="btn btn-outline-primary" for="${id}-on">する</label>
-        <input type="radio" class="btn-check" name="${id}" id="${id}-off" autocomplete="off" value="${value}" ${
+        <input type="radio" class="btn-check" name="${id}" id="${id}-off" autocomplete="off" value="${false}" ${
           !value ? "checked" : ""
         }>
         <label class="btn btn-outline-primary" for="${id}-off">しない</label>`;
@@ -391,17 +391,52 @@
 
       // 値が変更されたら Form の入力値(forms[i][key])で JSON(data[i][key]) を置き換え
       function onChange(element) {
-        if (element.name.split("-").length == 2) {
+        if (element.name.split("-").length >= 2) {
           // element.name から key と index を取得
           const original = revert(element.value, element.name, element.type);
-          // JSON(data[i][key]) を Form(forms[i][key]) で上書き
-          if (data[original.index][original.key] != original.value) {
-            data[original.index][original.key] = original.value;
+
+          const labelKey = original.keys.shift();
+          // 新規に追加された場合は元のデータがない
+          if (data[original.index] === undefined) {
+            data.push({});
           }
+          if (data[original.index][labelKey] === undefined || !original.keys.length) {
+            data[original.index][labelKey] = original.value;
+          } else {
+            // JSON(data[i][key]) を Form(forms[i][key]) で上書き
+            setNestedValue(data[original.index][labelKey], original);
+          }
+
           // UI側の処理（表示・非表示の切り替えなど）
           if (typeof onChangeValue === "function") {
-            onChangeValue(original.index, original.key, original.value);
+            onChangeValue(original.index, labelKey, original.value);
           }
+        }
+      }
+
+      // キーの配列（ keys ）を使ってオブジェクトの階層を下っていき、指定した値（ value ）を設定
+      function setNestedValue(obj, original) {
+        // Check if obj is defined
+        if (obj === undefined) {
+          throw new Error("The target object is undefined.");
+        }
+        const lastKeyIndex = original.keys.length - 1;
+        if (lastKeyIndex < 0) {
+          obj = original.value;
+          return;
+        }
+        for (let i = 0; i < lastKeyIndex; ++i) {
+          const key = original.keys[i];
+          if (!(key in obj)) {
+            obj[key] = {};
+          }
+          obj = obj[key];
+        }
+        // Check if obj is defined before setting value
+        if (obj) {
+          obj[original.keys[lastKeyIndex]] = original.value;
+        } else {
+          throw new Error("Unable to set value: the target object is undefined.");
         }
       }
 
@@ -412,7 +447,7 @@
 
         // element.name から key と index を取得
         const index = splits.pop();
-        const parentKey = splits.pop();
+        //const parentKey = splits.shift();
 
         // valueを適切な型に変換
         switch (type) {
@@ -437,13 +472,7 @@
             break;
         }
 
-        // 深い階層に対応
-        while (splits.length > 0) {
-          const nestedKey = splits.pop();
-          value = { [nestedKey]: value };
-        }
-
-        return { index: index, key: parentKey, value: value };
+        return { index: index, keys: splits, value: value };
       }
 
       // --------------------------------------------

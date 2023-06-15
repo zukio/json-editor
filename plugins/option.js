@@ -7,7 +7,7 @@ const userConfig = {
     width: 800,
     height: 600,
     webPreferences: {
-      devTools: false,
+      devTools: true,
     },
     titleBarStyle: "visible", //"hidden",
     frame: true,
