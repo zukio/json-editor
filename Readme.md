@@ -26,7 +26,7 @@
 ### 例：
 
 ```javascript
-"C:\Path\To\YourApp.exe" --jsonFile="./test.json"
+"C:\Path\To\json-editor.exe" --jsonFile="./test.json"
 ```
 
 また、アプリケーションは以下の 2 つの方法で起動できます。
@@ -34,13 +34,13 @@
 1. JSON ファイルのみを指定する場合（全ての入力フィールドは`type=text`で表示されます）：
 
    ```
-   electron.exe --jsonFile="./test.json"
+   json-editor.exe --jsonFile="./test.json"
    ```
 
 2. カスタムプラグインを指定する場合：
 
    ```
-   electron.exe --plugins="./plugins"
+   json-editor.exe --plugins="./plugins"
    ```
 
    プラグインは JSON の各フィールドに対するラベル、入力タイプ、デフォルト値、制約等を定義するものです。
