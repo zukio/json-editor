@@ -38,7 +38,7 @@ function translateWithSample(id, key, value = null) {
 
 // 値が変更されたら
 function onChangeValue(i, key, value) {
-  if (defineSample) {
+  if (defineSample != null) {
     const defineChangeStyle =
       typeof changeStyle !== "undefined" && changeStyle !== null && Object.keys(changeStyle).length > 0;
     if (defineChangeStyle) {

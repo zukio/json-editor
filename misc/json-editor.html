@@ -2,7 +2,10 @@
 <html lang="ja">
   <title>Edit Settings</title>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  />
   <link
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
     rel="stylesheet"
@@ -16,21 +19,50 @@
 
   <body class="p-5">
     <div class="container">
-      <button id="open" type="button" class="btn btn-primary btn-sm">
+      <button
+        id="open"
+        type="button"
+        class="btn btn-primary btn-sm"
+      >
         <span class="material-symbols-outlined align-middle"> folder_open </span>
         Open File
       </button>
-      <div class="text-end mb-3"><a href="#" id="reload" class="d-none">読み直す🔄</a></div>
+      <div class="text-end mb-3">
+        <a
+          href="#"
+          id="reload"
+          class="d-none"
+          >読み直す🔄</a
+        >
+      </div>
 
-      <form id="editForm" name="editForm" class="position-relative needs-validation">
-        <button id="save" class="btn btn-secondary w-100" type="submit" disabled>
+      <form
+        id="editForm"
+        name="editForm"
+        class="position-relative needs-validation"
+      >
+        <button
+          id="save"
+          class="btn btn-secondary w-100"
+          type="submit"
+          disabled
+        >
           Save
           <span class="material-symbols-outlined align-middle"> download </span>
         </button>
-        <dl id="container" class="pt-3 m-0"></dl>
+        <dl
+          id="container"
+          class="pt-3 m-0"
+        ></dl>
       </form>
       <div class="w-100 d-flex justify-content-center">
-        <button id="add" class="btn btn-outline-primary rounded-circle d-none" type="button">+</button>
+        <button
+          id="add"
+          class="btn btn-outline-primary rounded-circle d-none"
+          type="button"
+        >
+          +
+        </button>
       </div>
     </div>
 

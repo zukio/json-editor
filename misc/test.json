@@ -1,6 +1,6 @@
 [
   {
-    "Int": "0",
+    "Int": 0,
     "Float": 0.52,
     "Url": "",
     "Boolean": false,
@@ -12,7 +12,7 @@
   },
   {
     "Int": -1,
-    "Float": "0.0",
+    "Float": 0,
     "String": "",
     "Boolean": false,
     "Selectbox": "None",

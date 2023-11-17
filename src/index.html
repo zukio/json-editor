@@ -2,7 +2,10 @@
 <html lang="ja">
   <title>Edit Settings</title>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  />
   <link
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
     rel="stylesheet"
@@ -14,21 +17,50 @@
     href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0"
   />
 
-  <body class="p-5">
-    <div class="container">
+  <body class="">
+    <div
+      id="layerlock"
+      class="w-100 h-100 bg-dark position-fixed d-none"
+      style="z-index: 10; opacity: 0.5"
+    ></div>
+    <div class="container p-5">
       <div class="text-end mb-3">
-        <a href="#" id="reload" class="d-none" onclick="window.location.reload(true);">読み直す🔄</a>
+        <a
+          href="#"
+          id="reload"
+          class="d-none"
+          onclick="window.location.reload(true);"
+          >読み直す🔄</a
+        >
       </div>
       <pre id="debug"></pre>
-      <form id="editForm" name="editForm" class="position-relative needs-validation">
-        <button id="save" class="btn btn-secondary w-100" type="submit" disabled>
+      <form
+        id="editForm"
+        name="editForm"
+        class="position-relative needs-validation"
+      >
+        <button
+          id="save"
+          class="btn btn-secondary w-100"
+          type="submit"
+          disabled
+        >
           Save
           <span class="material-symbols-outlined align-middle"> download </span>
         </button>
-        <dl id="container" class="pt-3 m-0"></dl>
+        <dl
+          id="container"
+          class="pt-3 m-0"
+        ></dl>
       </form>
       <div class="w-100 d-flex justify-content-center">
-        <button id="add" class="btn btn-outline-primary rounded-circle d-none" type="button">+</button>
+        <button
+          id="add"
+          class="btn btn-outline-primary rounded-circle d-none"
+          type="button"
+        >
+          +
+        </button>
       </div>
     </div>
     <script src="./modifiedParts.js"></script>
@@ -53,7 +85,7 @@
         // data.jsonの内容が出力されます。
         data = apidata.data;
         fieldConfig = apidata.sample ?? {};
-        changeStyle = apidata.changeStyle ?? {};
+        changeStyle = apidata.style ?? {};
 
         // [イベント] HTMLおよびイベントリスナーを配置
         reload(data);
@@ -77,6 +109,7 @@
           }
         });
         if (valid) {
+          document.getElementById("layerlock").classList.remove("d-none");
           // データをリクエストする
           window.api.send("request-save", data);
         }

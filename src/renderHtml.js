@@ -57,14 +57,26 @@ function createHtmlFromNestedObject(object, index, path = []) {
       // 見出し
       const dt = document.createElement("dt");
       dt.id = `${pathString}-${index}`;
-      dt.className = "col-3 pt-1 bg-light";
-      dt.style = "border-top: 1px solid #fff;";
-      dt.textContent = translate(dt.id, key) ?? key; // 翻訳
+
+      // 配列のIndex（数字のみ）を見出しから除外
+      if (parseInt(key).toString().length != key.length) {
+        dt.style = "border-top: 1px solid #fff;";
+        dt.textContent = translate(dt.id, key) ?? key; // 翻訳
+        dt.className = "col-3 pt-1 bg-light";
+      } else {
+        dt.className = "d-none";
+      }
       dl.appendChild(dt);
       // 内容
       const dd = document.createElement("dd");
       dd.id = `${pathString}-${index}-value`;
-      dd.className = "col-9 pt-1";
+      // 配列のIndex（数字のみ）を見出しから除外
+      if (parseInt(key).toString().length != key.length) {
+        dd.className = "col-9 pt-1";
+      } else {
+        dd.className = "col-12 pt-1";
+      }
+
       // // ネストされたJSONオブジェクト
       if (typeof object[key] === "object") {
         // 再帰的に処理
@@ -86,19 +98,32 @@ function createHtmlFromNestedObject(object, index, path = []) {
 }
 // --------------------------------------------
 // Helper
+
+// 値の型が Number である場合に true を返します。
 function isNumber(input) {
+  // 1. Number() 関数は、オブジェクト引数を数値に変換します。
+  // 2. isNaN() は、値が NaN「数値ではない」かどうかを判断します。
   return input !== "" && !isNaN(Number(input));
+}
+
+// 数値が float であるかどうかを判断するための関数
+function isFloat(n) {
+  // 1. Number(n) === n は、引数が数値型であるかどうかを確認するために使用されます。
+  // 2. n % 1 !== 0 は、数値が整数かどうかを確認するために使用されます。
+  return Number(n) === n && n % 1 !== 0;
 }
 
 function getType(input) {
   if (typeof input !== "string" && typeof input !== "number") return typeof input;
   if (typeof input == "string" && !isNumber(input)) return "string";
-  const numberString = typeof input === "number" ? input.toString() : input;
-  if (!numberString.includes(".")) {
-    return "int";
-  } else {
-    return "float";
+
+  // Number型である場合
+  if (typeof input === "number") {
+    return isFloat(input) ? "float" : "int";
   }
+  // String型であるが、内容が数値である場合
+  const numberString = input.toString();
+  return numberString.includes(".") ? "float" : "int";
 }
 
 // --------------------------------------------
@@ -130,13 +155,13 @@ function createNumberInput(id, value, role) {
 
   // 入れ子の場合は、子の値を参照する
   let initial = role["initial"];
-  if (typeof role["initial"] === "object") {
+  if (typeof initial === "object") {
     const splits = id.split("-");
     if (splits.length < 2) return null;
     initial = role["initial"][splits[splits.length - 2]];
   }
   initial = initial === 0 ? value : initial;
-  const type = getType(role["initial"]);
+  const type = getType(initial);
 
   if (type !== "int" && type !== "float") {
     return createTextInput(id, value, role);

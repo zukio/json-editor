@@ -1,13 +1,17 @@
-const { BrowserWindow } = require("electron");
-const fs = require("fs");
-const path = require("path");
+const { BrowserWindow, screen } = require("electron");
+
+function getScreen() {
+  let { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  return { width: width, height: height };
+}
 
 // configのデフォルト値
 let initialConfig = {
+  fullscreen: false,
   width: 800,
   height: 600,
   webPreferences: {
-    devTools: true,
+    devTools: false,
   },
   titleBarStyle: "show-inactive",
   frame: true,
