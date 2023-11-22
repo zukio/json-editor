@@ -6,8 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron . --plugins=\"./plugins\" --jsonFile=\"../misc/test1.json\"",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "pack": "electron-builder",
+    "dist": "electron-builder --dir"
   },
   "author": "zukio",
   "license": "proprietary",
