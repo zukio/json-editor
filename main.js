@@ -59,7 +59,7 @@ if (!gotTheLock) {
 
         plugins.readPlugins(dirPath);
         // プラグインディレクトリからの相対パスを絶対パスに変換する
-        if (typeof jsonFile !== "undefined") jsonPath = plugins.cvtAbsolutePath(jsonFile);
+        if (jsonPath) jsonPath = plugins.cvtAbsolutePath(jsonPath);
       }
 
       // ローカルファイル（json）を読み込む
@@ -68,11 +68,28 @@ if (!gotTheLock) {
         throw new Error("Failed to read file");
       }
 
+      // ユーザー設定のデフォルト値
+      let userConfig = {};
+
+      // プラグインから定義された変数をチェック
+      if (typeof window.userConfig !== "undefined") {
+        userConfig = window.userConfig;
+      }
+
       // ユーザー設定で上書き
-      window.overrideConfig(typeof userConfig !== "undefined" ? userConfig : {});
+      window.overrideConfig(userConfig);
 
       mainWindow = window.createWindow(path.join(__dirname, "./modules/preload.js"));
+      // メニューバーを非表示にする
+      if (userConfig.windowConfig && Object.hasOwnProperty.call(userConfig.windowConfig, "menu") && !userConfig.windowConfig.menu) {
+        mainWindow.setMenu(null);
+      }
       mainWindow.loadFile("./src/index.html"); // Your HTML file
+
+      mainWindow.once("ready-to-show", () => {
+        mainWindow.show();
+        mainWindow.focus();
+      });
 
       // html側（レンダラープロセス）にデータを送信する
       mainWindow.webContents.on("did-finish-load", () => {
@@ -86,10 +103,7 @@ if (!gotTheLock) {
       console.error("Startup Error:", error);
 
       // Notify the user
-      dialog.showErrorBox(
-        "Startup Error",
-        "An error occurred during application startup. Please check the configuration and try again."
-      );
+      dialog.showErrorBox("Startup Error", "An error occurred during application startup. Please check the configuration and try again.");
 
       // Graceful shutdown
       app.quit();
@@ -117,24 +131,12 @@ if (!gotTheLock) {
         if (!result) {
           throw new Error("Failed to save file");
         }
-        dialog
-          .showMessageBox({
-            title: "Save File",
-            message: "Save File Success!",
-            detail: "Save File Success!",
-            type: "info",
-            buttons: ["OK"],
-          })
-          .then((response) => {
-            if (response.response === 0) {
-              app.quit();
-            }
-          });
+
+        // 保存成功後、直接アプリケーションを終了する
+        console.log("Save File Success! The application will close automatically.");
+        app.quit();
       } catch (err) {
-        dialog.showErrorBox(
-          "File Error",
-          "An error occurred during write json File. Please check the configuration and try again."
-        );
+        dialog.showErrorBox("File Error", "An error occurred during write json File. Please check the configuration and try again.");
         app.quit();
       }
     }

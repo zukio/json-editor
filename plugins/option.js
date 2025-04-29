@@ -1,7 +1,7 @@
 // ============================================
-// option.js
+// plugins/option.js
 // --------------------------------------------
-// ウィンドウの設定
+// JsonEditor の編集ウィンドウの設定
 const userConfig = {
   windowConfig: {
     fullscreen: false,
@@ -10,11 +10,14 @@ const userConfig = {
     x: 0, // 画面の左端
     y: 0, // 画面の上端
     webPreferences: {
-      devTools: true,
+      devTools: false,
+      nodeIntegration: true,
     },
-    titleBarStyle: "visible", //"hidden",
+    minimizable: false,
+    titleBarStyle: "visible",
     alwaysOnTop: true, // 最前面に表示
     frame: true,
+    show: false,
   },
   ignoreMouseEvents: false,
 };
